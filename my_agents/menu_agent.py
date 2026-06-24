@@ -1,6 +1,6 @@
 from agents import Agent, RunContextWrapper
 from models import UserAccountContext
-
+from my_guardrails.output_guardrails import menu_output_guardrail
 
 def dynamic_menu_agent_instructions(
     wrapper: RunContextWrapper[UserAccountContext],
@@ -26,11 +26,10 @@ def dynamic_menu_agent_instructions(
     - 채식, 비건, 글루텐 프리, 유제품 제외 옵션
     - 매운맛 정도, 양, 조리 방식
 
-    메뉴 안내 정책:
-    - 어떤 메뉴도 알레르기 유발 성분이 전혀 없다고 보장하지 않습니다
-    - 알레르기가 관련된 경우 교차 접촉 가능성을 명확히 안내합니다
-    - 알레르기나 식단 제한 사항이 불명확하면 추가 질문을 합니다
-    - 실용적이고 고객 친화적인 추천을 제공합니다
+    메뉴 목록:
+    - 미역국
+    - 김치볶음밥
+    - 비스크 파스타
 
     {"우선 지원 혜택: 더 자세한 메뉴 안내와 대체 옵션 제안을 제공합니다." if wrapper.context.tier != "basic" else ""}
     """
@@ -39,4 +38,5 @@ def dynamic_menu_agent_instructions(
 menu_agent = Agent(
     name="menu_support_agent",
     instructions=dynamic_menu_agent_instructions,
+    output_guardrails=[menu_output_guardrail]
 )

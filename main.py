@@ -1,25 +1,32 @@
 import dotenv
+
 dotenv.load_dotenv()
 
 import streamlit as st
 import asyncio
 
 from openai import OpenAI
-from agents import Runner, SQLiteSession, function_tool, RunContextWrapper, InputGuardrailTripwireTriggered
+from agents import (
+    Runner,
+    SQLiteSession,
+    function_tool,
+    RunContextWrapper,
+    InputGuardrailTripwireTriggered,
+    OutputGuardrailTripwireTriggered,
+)
+
 
 from models import UserAccountContext
 from my_agents.triage_agent import triage_agent
+
 
 @function_tool
 def get_user_tier(wrapper: RunContextWrapper[UserAccountContext]):
     return f"유저 {wrapper.context.customer_id}는 {wrapper.context.tier} 계정이다. "
 
+
 client = OpenAI()
-user_account_ctx = UserAccountContext(
-    customer_id=1,
-    name="dylan",
-    tier="basic"
-)
+user_account_ctx = UserAccountContext(customer_id=1, name="dylan", tier="basic")
 
 if "session" not in st.session_state:
     st.session_state["session"] = SQLiteSession(
@@ -47,6 +54,7 @@ async def paint_history():
 
 asyncio.run(paint_history())
 
+
 async def run_agent(message):
     with st.chat_message("ai"):
         text_placeholder = st.empty()
@@ -54,10 +62,10 @@ async def run_agent(message):
 
         try:
             stream = Runner.run_streamed(
-                triage_agent,
+                st.session_state["agent"],  # triage_agent
                 message,
                 session=session,
-                context=user_account_ctx
+                context=user_account_ctx,
             )
 
             async for event in stream.stream_events():
@@ -68,8 +76,10 @@ async def run_agent(message):
                         text_placeholder.write(response)
 
                 elif event.type == "agent_updated_stream_event":
-                    if st.session_state["agent"]. name != event.new_agent.name:
-                        st.write(f"에이전트가 전환되었습니다. from {st.session_state['agent'].name} to {event.new_agent.name}")
+                    if st.session_state["agent"].name != event.new_agent.name:
+                        st.write(
+                            f"에이전트가 전환되었습니다. from {st.session_state['agent'].name} to {event.new_agent.name}"
+                        )
 
                         st.session_state["agent"] = event.new_agent
 
@@ -78,6 +88,8 @@ async def run_agent(message):
 
         except InputGuardrailTripwireTriggered:
             st.write("그건 도와줄 수 없어")
+        except OutputGuardrailTripwireTriggered:
+            st.write("응답에 제공할 수 없는 내용이 포함되어 있어")
 
 
 message = st.chat_input("어시스턴트에게 메시지를 입력하세요")
